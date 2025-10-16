@@ -13,7 +13,7 @@ import os.path as osp
 from misc import torchutils, imutils
 import net.resnet50_cam
 import cv2
-import voc12.dataloader
+from datasets import factory as dataset_factory
 
 cudnn.enabled = True
 
@@ -125,7 +125,9 @@ def _work(process_id, model, dataset, args):
 
 
 def run(args):
-    model = getattr(importlib.import_module(args.clims_network), 'CAM')(n_classes=20)
+    dataset_module = dataset_factory.get_dataset_module(args.dataset)
+
+    model = getattr(importlib.import_module(args.clims_network), 'CAM')(n_classes=args.num_classes)
     # model = getattr(importlib.import_module(args.cam_network), 'CAM')(n_classes=20)
     model.load_state_dict(torch.load(args.clims_weights_name + '.pth'), strict=True)
     model.eval()
@@ -134,8 +136,8 @@ def run(args):
         os.makedirs(f'vis/{args.work_space}')
     n_gpus = torch.cuda.device_count()
 
-    dataset = voc12.dataloader.VOC12ClassificationDatasetMSF(args.infer_list, voc12_root=args.voc12_root,
-                                                             scales=args.cam_scales)
+    dataset = dataset_module.ClassificationDatasetMSF(args.infer_list, data_root=args.data_root,
+                                                     scales=args.cam_scales)
     dataset = torchutils.split_dataset(dataset, n_gpus)
 
     print('[ ', end='')

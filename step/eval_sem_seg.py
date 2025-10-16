@@ -6,6 +6,9 @@ from chainercv.evaluations import calc_semantic_segmentation_confusion
 import imageio
 
 def run(args):
+    if args.dataset != 'voc12':
+        raise NotImplementedError('Semantic segmentation evaluation is currently only supported for VOC12.')
+
     dataset = VOCSemanticSegmentationDataset(split=args.chainer_eval_set, data_dir=args.voc12_root)
 
     preds = []

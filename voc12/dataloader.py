@@ -11,6 +11,7 @@ import torch.nn.functional as F
 IMG_FOLDER_NAME = "JPEGImages"
 ANNOT_FOLDER_NAME = "Annotations"
 IGNORE = 255
+IGNORE_LABEL = IGNORE
 
 CAT_LIST = ['aeroplane', 'bicycle', 'bird', 'boat',
         'bottle', 'bus', 'car', 'cat', 'chair',
@@ -24,6 +25,13 @@ N_CAT = len(CAT_LIST)
 CAT_NAME_TO_NUM = dict(zip(CAT_LIST,range(len(CAT_LIST))))
 
 cls_labels_dict = np.load('voc12/cls_labels.npy', allow_pickle=True).item()
+
+
+def _resolve_root(voc12_root=None, data_root=None):
+    root = data_root if data_root is not None else voc12_root
+    if root is None:
+        raise ValueError("Dataset root must be provided via 'voc12_root' or 'data_root'.")
+    return root
 
 def decode_int_filename(int_filename):
     s = str(int(int_filename))
@@ -111,12 +119,12 @@ class GetAffinityLabelFromIndices():
 
 class VOC12ImageDataset(Dataset):
 
-    def __init__(self, img_name_list_path, voc12_root,
+    def __init__(self, img_name_list_path, voc12_root=None, data_root=None,
                  resize_long=None, rescale=None, img_normal=TorchvisionNormalize(), hor_flip=False,
                  crop_size=None, crop_method=None, to_torch=True):
 
         self.img_name_list = load_img_name_list(img_name_list_path)
-        self.voc12_root = voc12_root
+        self.voc12_root = _resolve_root(voc12_root, data_root)
 
         self.resize_long = resize_long
         self.rescale = rescale
@@ -161,10 +169,10 @@ class VOC12ImageDataset(Dataset):
 
 class VOC12ClassificationDataset(VOC12ImageDataset):
 
-    def __init__(self, img_name_list_path, voc12_root,
+    def __init__(self, img_name_list_path, voc12_root=None, data_root=None,
                  resize_long=None, rescale=None, img_normal=TorchvisionNormalize(), hor_flip=False,
                  crop_size=None, crop_method=None):
-        super().__init__(img_name_list_path, voc12_root,
+        super().__init__(img_name_list_path, voc12_root, data_root,
                  resize_long, rescale, img_normal, hor_flip,
                  crop_size, crop_method)
         self.label_list = load_image_label_list_from_npy(self.img_name_list)
@@ -183,10 +191,10 @@ class VOC12ClassificationDataset(VOC12ImageDataset):
 
 class VOC12ClassificationDataset_Single(VOC12ImageDataset):
     
-    def __init__(self, img_name_list_path, voc12_root, 
+    def __init__(self, img_name_list_path, voc12_root=None, data_root=None, 
                  resize_long=None, rescale=None, img_normal=TorchvisionNormalize(), hor_flip=False,
                  crop_size=None, crop_method=None):
-        super().__init__(img_name_list_path, voc12_root,
+        super().__init__(img_name_list_path, voc12_root, data_root,
                  resize_long, rescale, img_normal, hor_flip,
                  crop_size, crop_method)
         self.label_list = load_image_label_list_from_npy(self.img_name_list)
@@ -260,10 +268,10 @@ class VOC12ClassificationDataset_Single(VOC12ImageDataset):
 
 class VOC12ClassificationDatasetMSF(VOC12ClassificationDataset):
 
-    def __init__(self, img_name_list_path, voc12_root, img_normal=TorchvisionNormalize(), scales=(1.0,)):
+    def __init__(self, img_name_list_path, voc12_root=None, data_root=None, img_normal=TorchvisionNormalize(), scales=(1.0,)):
         self.scales = scales
 
-        super().__init__(img_name_list_path, voc12_root, img_normal=img_normal)
+        super().__init__(img_name_list_path, voc12_root, data_root, img_normal=img_normal)
         self.scales = scales
 
     def __getitem__(self, idx):
@@ -290,12 +298,12 @@ class VOC12ClassificationDatasetMSF(VOC12ClassificationDataset):
 
 class VOC12SegmentationDataset(Dataset):
 
-    def __init__(self, img_name_list_path, label_dir, crop_size, voc12_root,
+    def __init__(self, img_name_list_path, label_dir, crop_size, voc12_root=None, data_root=None,
                  rescale=None, img_normal=TorchvisionNormalize(), hor_flip=False,
                  crop_method = 'random'):
 
         self.img_name_list = load_img_name_list(img_name_list_path)
-        self.voc12_root = voc12_root
+        self.voc12_root = _resolve_root(voc12_root, data_root)
 
         self.label_dir = label_dir
 
@@ -341,10 +349,10 @@ class VOC12SegmentationDataset(Dataset):
 
 class VOC12_ours(Dataset):
 
-    def __init__(self, img_name_list_path, voc12_root):
+    def __init__(self, img_name_list_path, voc12_root=None, data_root=None):
 
         self.ids = np.loadtxt(img_name_list_path, dtype=np.str)
-        self.voc12_root = voc12_root
+        self.voc12_root = _resolve_root(voc12_root, data_root)
     def read_label(self, file, dtype=np.int32):
         f = Image.open(file)
         try:
@@ -377,10 +385,10 @@ class VOC12_ours(Dataset):
         return idx
 
 class VOC12AffinityDataset(VOC12SegmentationDataset):
-    def __init__(self, img_name_list_path, label_dir, crop_size, voc12_root,
+    def __init__(self, img_name_list_path, label_dir, crop_size, voc12_root=None, data_root=None,
                  indices_from, indices_to,
                  rescale=None, img_normal=TorchvisionNormalize(), hor_flip=False, crop_method=None):
-        super().__init__(img_name_list_path, label_dir, crop_size, voc12_root, rescale, img_normal, hor_flip, crop_method=crop_method)
+        super().__init__(img_name_list_path, label_dir, crop_size, voc12_root, data_root, rescale, img_normal, hor_flip, crop_method=crop_method)
 
         self.extract_aff_lab_func = GetAffinityLabelFromIndices(indices_from, indices_to)
 
@@ -396,3 +404,11 @@ class VOC12AffinityDataset(VOC12SegmentationDataset):
 
         return out
 
+
+# Aliases to provide a consistent API across datasets
+ClassificationDataset = VOC12ClassificationDataset
+ClassificationDatasetMSF = VOC12ClassificationDatasetMSF
+ImageDataset = VOC12ImageDataset
+SegmentationDataset = VOC12SegmentationDataset
+AffinityDataset = VOC12AffinityDataset
+DatasetForEval = VOC12_ours

@@ -12,9 +12,9 @@ import importlib
 from imutils import visual_debug
 from clip_utils import clip_forward
 from clip_loss import SimMaxLoss, SimMinLoss, BackgroundSuppressionLoss
-import voc12.dataloader
 from misc import pyutils, torchutils
 import os, math
+from datasets import factory as dataset_factory
 
 
 def validate(model, data_loader):
@@ -59,19 +59,27 @@ def validate(model, data_loader):
 #     set_seed(GLOBAL_SEED + worker_id)
 
 def run(args):
-    model = getattr(importlib.import_module(args.clims_network), 'CLIMS')(n_classes=20)
+    dataset_module = dataset_factory.get_dataset_module(args.dataset)
 
-    # initialize backbone network with baseline CAM
-    model.load_state_dict(torch.load('cam-baseline-voc12/res50_cam.pth'), strict=True)
-    train_dataset = voc12.dataloader.VOC12ClassificationDataset(args.train_list, voc12_root=args.voc12_root,
-                                                                resize_long=(320, 640), hor_flip=True,
-                                                                crop_size=512, crop_method="random")
+    model = getattr(importlib.import_module(args.clims_network), 'CLIMS')(n_classes=args.num_classes)
+
+    baseline_path_candidates = [args.baseline_cam_weights, args.cam_weights_name]
+    baseline_path = next((p for p in baseline_path_candidates if p and os.path.isfile(p)), None)
+    if baseline_path:
+        print(f"Loading baseline CAM weights from {baseline_path}")
+        model.load_state_dict(torch.load(baseline_path, map_location='cpu'), strict=True)
+    else:
+        print("No baseline CAM weights provided/found. Training CLIMS without CAM initialization.")
+
+    train_dataset = dataset_module.ClassificationDataset(args.train_list, data_root=args.data_root,
+                                                         resize_long=(320, 640), hor_flip=True,
+                                                         crop_size=512, crop_method="random")
     train_data_loader = DataLoader(train_dataset, batch_size=args.cam_batch_size,
                                    shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
     max_step = (len(train_dataset) // args.cam_batch_size) * args.clims_num_epoches
 
-    val_dataset = voc12.dataloader.VOC12ClassificationDataset(args.val_list, voc12_root=args.voc12_root,
-                                                              crop_size=512)
+    val_dataset = dataset_module.ClassificationDataset(args.val_list, data_root=args.data_root,
+                                                       crop_size=512)
     val_data_loader = DataLoader(val_dataset, batch_size=args.cam_batch_size,
                                  shuffle=False, num_workers=args.num_workers, pin_memory=True, drop_last=True)
 
@@ -88,7 +96,7 @@ def run(args):
     hyper = [float(h) for h in args.hyper.split(',')]
     OTMLoss = SimMaxLoss()
     BTMLoss = SimMinLoss()
-    CBSLoss = BackgroundSuppressionLoss(dname='voc')
+    CBSLoss = BackgroundSuppressionLoss(dname=args.clip_dataset_key)
     print(hyper)
 
     # CLIP
@@ -139,8 +147,9 @@ def run(args):
             # foreground indices
             fg_indices = torch.nonzero(label.reshape(-1) == 1, as_tuple=False).squeeze()
 
-            cam_224 = F.interpolate(x, (clip_input_size, clip_input_size), mode='bilinear', align_corners=True).reshape(N * 20, 1, clip_input_size,
-                                                                                                clip_input_size)
+            cam_224 = F.interpolate(x, (clip_input_size, clip_input_size), mode='bilinear', align_corners=True).reshape(
+                N * args.num_classes, 1, clip_input_size, clip_input_size
+            )
             img_224 = F.interpolate(img, (clip_input_size, clip_input_size), mode='bilinear', align_corners=True)
 
             fg_224_eval = []
@@ -153,9 +162,9 @@ def run(args):
             fg_224_eval = torch.stack(fg_224_eval, dim=0)
             bg_224_eval = torch.stack(bg_224_eval, dim=0)
 
-            L_OTM = OTMLoss(clip_forward(clip_model, fg_224_eval, fg_label[fg_indices], dname='voc'), 1)
+            L_OTM = OTMLoss(clip_forward(clip_model, fg_224_eval, fg_label[fg_indices], dname=args.clip_dataset_key), 1)
 
-            L_BTM = BTMLoss(clip_forward(clip_model, bg_224_eval, fg_label[fg_indices], dname='voc'), 1)
+            L_BTM = BTMLoss(clip_forward(clip_model, bg_224_eval, fg_label[fg_indices], dname=args.clip_dataset_key), 1)
 
             L_CBS = CBSLoss(clip_model, fg_224_eval)
 

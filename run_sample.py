@@ -7,6 +7,8 @@ from misc import pyutils
 import random
 import torch
 
+from datasets import factory as dataset_factory
+
 # def seed_torch(seed=1):
 #     random.seed(seed)
 #     os.environ['PYTHONHASHSEED'] = str(seed)
@@ -37,8 +39,12 @@ if __name__ == '__main__':
     # Environment
     # parser.add_argument("--num_workers", default=os.cpu_count()//2, type=int)
     parser.add_argument("--num_workers", default=12, type=int)
+    parser.add_argument("--dataset", default='voc12', choices=['voc12', 'bcss'],
+                        help="Dataset to use for training and evaluation.")
     parser.add_argument("--voc12_root", default='/data1/xjheng/dataset/VOC2012/', type=str,
-                        help="Path to VOC 2012 Devkit, must contain ./JPEGImages as subdirectory.")
+                        help="Legacy name for dataset root; prefer --data_root.")
+    parser.add_argument("--data_root", default=None, type=str,
+                        help="Override dataset root directory.")
 
     # Dataset
     parser.add_argument("--train_list", default="voc12/train_aug.txt", type=str)
@@ -93,6 +99,9 @@ if __name__ == '__main__':
     parser.add_argument("--work_space", default="result_default5", type=str) # set your path
     parser.add_argument("--log_name", default="sample_train_eval", type=str)
     parser.add_argument("--cam_weights_name", default="res50_cam.pth", type=str)
+    parser.add_argument("--baseline_cam_weights", default=None, type=str,
+                        help="Path to pre-trained CAM weights used to initialize CLIMS."
+                             " If omitted, dataset defaults are used.")
     parser.add_argument("--irn_weights_name", default="res50_irn.pth", type=str)
     parser.add_argument("--cam_out_dir", default="cam_mask", type=str)
     parser.add_argument("--ir_label_out_dir", default="ir_label", type=str)
@@ -114,6 +123,19 @@ if __name__ == '__main__':
     parser.add_argument("--eval_sem_seg_pass", type=str2bool, default=False)
 
     args = parser.parse_args()
+
+    dataset_factory.apply_default_lists(args)
+
+    dataset_info = dataset_factory.get_dataset_info(args.dataset)
+
+    args.data_root = args.data_root or args.voc12_root
+    args.voc12_root = args.data_root  # backward compatibility for legacy code paths
+    args.num_classes = dataset_info.num_classes
+    args.ignore_label = dataset_info.ignore_label
+    args.clip_dataset_key = dataset_info.clip_key
+    args.baseline_cam_weights = getattr(args, 'baseline_cam_weights', None)
+    if getattr(args, 'baseline_cam_weights', None) is None:
+        args.baseline_cam_weights = dataset_info.cam_baseline_weights
     args.log_name = osp.join(args.work_space,args.log_name)
     args.cam_weights_name = osp.join(args.work_space,args.cam_weights_name)
     args.irn_weights_name = osp.join(args.work_space,args.irn_weights_name)
@@ -184,4 +206,3 @@ if __name__ == '__main__':
 
         timer = pyutils.Timer('step.eval_sem_seg:')
         step.eval_sem_seg.run(args)
-

@@ -9,7 +9,7 @@ import torch.nn.functional as F
 
 import importlib
 
-import voc12.dataloader
+from datasets import factory as dataset_factory
 from misc import pyutils, torchutils
 from torch import autograd
 import os
@@ -41,18 +41,20 @@ def validate(model, data_loader):
 
 def run(args):
 
-    model = getattr(importlib.import_module(args.cam_network), 'Net')()
+    dataset_module = dataset_factory.get_dataset_module(args.dataset)
+
+    model = getattr(importlib.import_module(args.cam_network), 'Net')(n_classes=args.num_classes)
 
 
-    train_dataset = voc12.dataloader.VOC12ClassificationDataset(args.train_list, voc12_root=args.voc12_root,
-                                                                resize_long=(320, 640), hor_flip=True,
-                                                                crop_size=512, crop_method="random")
+    train_dataset = dataset_module.ClassificationDataset(args.train_list, data_root=args.data_root,
+                                                         resize_long=(320, 640), hor_flip=True,
+                                                         crop_size=512, crop_method="random")
     train_data_loader = DataLoader(train_dataset, batch_size=args.cam_batch_size,
                                    shuffle=True, num_workers=args.num_workers, pin_memory=True, drop_last=True)
     max_step = (len(train_dataset) // args.cam_batch_size) * args.cam_num_epoches
 
-    val_dataset = voc12.dataloader.VOC12ClassificationDataset(args.val_list, voc12_root=args.voc12_root,
-                                                              crop_size=512)
+    val_dataset = dataset_module.ClassificationDataset(args.val_list, data_root=args.data_root,
+                                                       crop_size=512)
     val_data_loader = DataLoader(val_dataset, batch_size=args.cam_batch_size,
                                  shuffle=False, num_workers=args.num_workers, pin_memory=True, drop_last=True)
 

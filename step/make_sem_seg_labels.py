@@ -9,7 +9,7 @@ import importlib
 import os
 import imageio
 
-import voc12.dataloader
+from datasets import factory as dataset_factory
 from misc import torchutils, indexing
 from PIL import Image
 
@@ -18,7 +18,7 @@ palette = [0,0,0,  128,0,0,  0,128,0,  128,128,0,  0,0,128,  128,0,128,  0,128,1
 					 64,0,0,  192,0,0,  64,128,0,  192,128,0,  64,0,128,  192,0,128,  64,128,128,  192,128,128,
 					 0,64,0,  128,64,0,  0,192,0,  128,192,0,  0,64,128,  128,64,128,  0,192,128,  128,192,128,
 					 64,64,0,  192,64,0,  64,192,0, 192,192,0]
-def _work(process_id, model, dataset, args):
+def _work(process_id, model, dataset, args, dataset_module):
 
     n_gpus = torch.cuda.device_count()
     databin = dataset[process_id]
@@ -30,7 +30,7 @@ def _work(process_id, model, dataset, args):
         model.cuda()
 
         for iter, pack in enumerate(data_loader):
-            img_name = voc12.dataloader.decode_int_filename(pack['name'][0])
+            img_name = dataset_module.decode_int_filename(pack['name'][0])
             # if os.path.exists(os.path.join(args.sem_seg_out_dir, img_name + '.png')):
             #     continue
             orig_img_size = np.asarray(pack['size'])
@@ -70,14 +70,15 @@ def run(args):
 
     n_gpus = torch.cuda.device_count()
 
-    dataset = voc12.dataloader.VOC12ClassificationDatasetMSF(args.infer_list,
-    # dataset = voc12.dataloader.VOC12ClassificationDatasetMSF('voc12/train.txt',
-                                                             voc12_root=args.voc12_root,
-                                                             scales=(1.0,))
+    dataset_module = dataset_factory.get_dataset_module(args.dataset)
+
+    dataset = dataset_module.ClassificationDatasetMSF(args.infer_list,
+                                                      data_root=args.data_root,
+                                                      scales=(1.0,))
     dataset = torchutils.split_dataset(dataset, n_gpus)
 
     print("[", end='')
-    multiprocessing.spawn(_work, nprocs=n_gpus, args=(model, dataset, args), join=True)
+    multiprocessing.spawn(_work, nprocs=n_gpus, args=(model, dataset, args, dataset_module), join=True)
     print("]")
 
     torch.cuda.empty_cache()

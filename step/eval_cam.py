@@ -4,6 +4,7 @@ import os
 from chainercv.datasets import VOCSemanticSegmentationDataset
 from chainercv.evaluations import calc_semantic_segmentation_confusion
 from clip_utils import category_dict
+from datasets import factory as dataset_factory
 
 def print_iou(iou, dname='voc'):
     iou_dict = {}
@@ -14,6 +15,9 @@ def print_iou(iou, dname='voc'):
     return iou_dict
 
 def run(args):
+    if args.dataset != 'voc12':
+        raise NotImplementedError('CAM evaluation is currently implemented only for the VOC12 dataset.')
+
     dataset = VOCSemanticSegmentationDataset(split=args.chainer_eval_set, data_dir=args.voc12_root)
     # labels = [dataset.get_example_by_keys(i, (1,))[0] for i in range(len(dataset))]
 
@@ -40,7 +44,7 @@ def run(args):
     iou = gtjresj / denominator
 
     # print(iou)
-    iou_dict = print_iou(iou, 'voc')
+    iou_dict = print_iou(iou, dataset_factory.get_dataset_info(args.dataset).clip_key)
 
     print("threshold:", args.cam_eval_thres, 'miou:', np.nanmean(iou), "i_imgs", n_images)
     print('among_predfg_bg', float((resj[1:].sum()-confusion[1:,1:].sum())/(resj[1:].sum())))

@@ -36,6 +36,25 @@ You will need to download the images (JPEG format) in MSCOCO 2014 dataset [here]
 |   |   ├── val2014
 ```
 
+### BCSS-WSSS
+Download the BCSS weakly supervised semantic segmentation dataset following the instructions in `BCSS-WSSS/meta/README.md`. After extracting, the repository should look like:
+
+```
+BCSS-WSSS/
+├── masks
+├── meta
+├── rgbs_colorNormalized
+└── logs
+```
+
+Generate dataset splits (and optionally cache class labels) with:
+
+```
+python bcss/prepare_metadata.py --data-root BCSS-WSSS --write-cls-labels
+```
+
+The script produces `bcss/train.txt`, `bcss/val.txt`, and `bcss/infer.txt`; adjust ratios via the script arguments if needed.
+
 ## Training on PASCAL VOC2012
 1. Install CLIP.
 ```
@@ -55,6 +74,20 @@ CUDA_VISIBLE_DEVICES=0 python run_sample.py --voc12_root /data1/xjheng/dataset/V
 ```shell
 cd segmentation/
 ```
+
+## Training on BCSS-WSSS
+1. Prepare metadata as described in the dataset section above.
+2. Train the baseline CAM network and CLIMS in a single run (the CAM weights saved in the workspace will be reused automatically):
+
+```
+CUDA_VISIBLE_DEVICES=0 python run_sample.py \
+    --dataset bcss --data_root BCSS-WSSS \
+    --work_space clims_bcss \
+    --train_cam_pass True --train_clims_pass True --make_clims_pass True \
+    --cam_batch_size 8 --clims_num_epoches 10
+```
+
+Tune epochs, batch sizes, and learning rates according to GPU memory and convergence.
 
 ## Evaluation Results
 ### The quality of initial CAMs and pseudo masks on PASCAL VOC2012.

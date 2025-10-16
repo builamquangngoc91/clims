@@ -12,7 +12,11 @@ category_dict = {
              'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
              'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
              'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors',
-             'teddy bear', 'hair drier', 'toothbrush']
+             'teddy bear', 'hair drier', 'toothbrush'],
+    'bcss': ['tumor tissue', 'stroma', 'lymphocytic infiltrate', 'necrosis or debris', 'glandular secretions',
+             'blood cells', 'excluded region', 'metaplasia', 'fat tissue', 'plasma cells', 'immune infiltrate',
+             'mucoid material', 'normal acinus or duct', 'lymphatic vessel', 'undetermined tissue', 'nerve bundle',
+             'skin adnexa', 'blood vessel', 'angioinvasion', 'ductal carcinoma in situ', 'other tissue']
 }
 
 background_dict = {
@@ -41,6 +45,13 @@ background_dict = {
              'a photo of market.', 'a photo of window.', 'a photo of blanket.', 'a photo of boy.', 'a photo of woman.',
              'a photo of bat.', 'a photo of baby.', 'a photo of flower.', 'a photo of wall.', 'a photo of bath tub.',
              'a photo of tarmac.', 'a photo of tennis ball.', 'a photo of roll.', 'a photo of park.'],
+    'bcss': ['a micrograph of blank slide background.', 'a microscopic photo of healthy stroma.',
+             'a photo of empty histology slide area.', 'a photo of connective tissue background.',
+             'a microscopy photo of adipose background.', 'a histology photo without lesions.',
+             'a microscopy image of background extracellular matrix.',
+             'a histology photo of unstained slide region.',
+             'a micrograph of general tissue background.',
+             'a microscopy photo of normal epithelium.']
 }
 
 prompt_dict = ['a photo of {}.']

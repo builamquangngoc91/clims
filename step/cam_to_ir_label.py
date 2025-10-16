@@ -6,9 +6,9 @@ import imageio
 from torch import multiprocessing
 from torch.utils.data import DataLoader
 
-import voc12.dataloader
 from misc import torchutils, imutils
 from PIL import Image
+from datasets import factory as dataset_factory
 
 
 palette = [0,0,0,  128,0,0,  0,128,0,  128,128,0,  0,0,128,  128,0,128,  0,128,128,  128,128,128,
@@ -16,13 +16,13 @@ palette = [0,0,0,  128,0,0,  0,128,0,  128,128,0,  0,0,128,  128,0,128,  0,128,1
 					 0,64,0,  128,64,0,  0,192,0,  128,192,0,  0,64,128,  128,64,128,  0,192,128,  128,192,128,
 					 64,64,0,  192,64,0,  64,192,0, 192,192,0]
 
-def _work(process_id, infer_dataset, args):
+def _work(process_id, infer_dataset, args, dataset_module):
     visualize_intermediate_cam = False
     databin = infer_dataset[process_id]
     infer_data_loader = DataLoader(databin, shuffle=False, num_workers=0, pin_memory=False)
 
     for iter, pack in enumerate(infer_data_loader):
-        img_name = voc12.dataloader.decode_int_filename(pack['name'][0])
+        img_name = dataset_module.decode_int_filename(pack['name'][0])
         img = pack['img'][0].numpy()
         cam_dict = np.load(os.path.join(args.cam_out_dir, img_name + '.npy'), allow_pickle=True).item()
 
@@ -54,9 +54,11 @@ def _work(process_id, infer_dataset, args):
             print("%d " % ((5 * iter + 1) // (len(databin) // 20)), end='')
 
 def run(args):
-    dataset = voc12.dataloader.VOC12ImageDataset(args.train_list, voc12_root=args.voc12_root, img_normal=None, to_torch=False)
+    dataset_module = dataset_factory.get_dataset_module(args.dataset)
+
+    dataset = dataset_module.ImageDataset(args.train_list, data_root=args.data_root, img_normal=None, to_torch=False)
     dataset = torchutils.split_dataset(dataset, args.num_workers)
 
     print('[ ', end='')
-    multiprocessing.spawn(_work, nprocs=args.num_workers, args=(dataset, args), join=True)
+    multiprocessing.spawn(_work, nprocs=args.num_workers, args=(dataset, args, dataset_module), join=True)
     print(']')
