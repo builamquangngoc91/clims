@@ -136,6 +136,16 @@ if __name__ == '__main__':
     args.baseline_cam_weights = getattr(args, 'baseline_cam_weights', None)
     if getattr(args, 'baseline_cam_weights', None) is None:
         args.baseline_cam_weights = dataset_info.cam_baseline_weights
+    def _normalize_scales(scales):
+        if isinstance(scales, (list, tuple)):
+            return tuple(float(s) for s in scales)
+        parts = [p.strip() for p in str(scales).split(',') if p.strip()]
+        if not parts:
+            raise ValueError("--cam_scales must contain at least one scale value")
+        return tuple(float(p) for p in parts)
+
+    args.cam_scales = _normalize_scales(args.cam_scales)
+
     args.log_name = osp.join(args.work_space,args.log_name)
     args.cam_weights_name = osp.join(args.work_space,args.cam_weights_name)
     args.irn_weights_name = osp.join(args.work_space,args.irn_weights_name)
