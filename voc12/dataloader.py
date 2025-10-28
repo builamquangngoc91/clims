@@ -289,8 +289,6 @@ class VOC12ClassificationDatasetMSF(VOC12ClassificationDataset):
             s_img = self.img_normal(s_img)
             s_img = imutils.HWC_to_CHW(s_img)
             ms_img_list.append(np.stack([s_img, np.flip(s_img, -1)], axis=0))
-        if len(self.scales) == 1:
-            ms_img_list = ms_img_list[0]
 
         out = {"name": name_str, "img": ms_img_list, "size": (img.shape[0], img.shape[1]),
                "label": torch.from_numpy(self.label_list[idx])}
@@ -386,8 +384,10 @@ class VOC12_ours(Dataset):
 
 class VOC12AffinityDataset(VOC12SegmentationDataset):
     def __init__(self, img_name_list_path, label_dir, crop_size, voc12_root=None, data_root=None,
-                 indices_from, indices_to,
+                 indices_from=None, indices_to=None,
                  rescale=None, img_normal=TorchvisionNormalize(), hor_flip=False, crop_method=None):
+        if indices_from is None or indices_to is None:
+            raise ValueError("indices_from and indices_to must be provided for VOC12AffinityDataset")
         super().__init__(img_name_list_path, label_dir, crop_size, voc12_root, data_root, rescale, img_normal, hor_flip, crop_method=crop_method)
 
         self.extract_aff_lab_func = GetAffinityLabelFromIndices(indices_from, indices_to)
