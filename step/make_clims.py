@@ -103,6 +103,8 @@ def _work(process_id, model, dataset, args):
 
                 cam = make_cam(cam).squeeze()
                 cam = get_numpy_from_tensor(cam)
+                cam = np.nan_to_num(cam, nan=0.0, posinf=1.0, neginf=0.0)
+                cam = np.clip(cam, 0.0, 1.0)
 
                 image = np.array(pack['img'][0])[0]
                 image = image[0]
